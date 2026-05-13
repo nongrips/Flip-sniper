@@ -49,7 +49,9 @@ const sharedReloadTimers = {
   vinted: null,
   mercari: null,
 };
-const terminalBuffers = {};
+let arbitrageDeals = [];
+let arbitrageRefreshTimer = null;
+const ARBITRAGE_REFRESH_MS = 5000;
 let activeDealModal = null;
 let activeTextPrompt = null;
 let draggedTargetId = null;
@@ -74,6 +76,11 @@ const PLATFORM_META = {
     label: "Mercari",
     process: "mercari-sniper",
     description: "Shared Mercari loop using a public browser session, newest search, and no user cookies.",
+  },
+  arbitrage: {
+    label: "Flip",
+    process: "arbitrage-sniper",
+    description: "Vinted → eBay/Kleinanzeigen Arbitrage. Findet Deals auf Vinted und checkt automatisch Resale-Preise.",
   },
 };
 
@@ -276,6 +283,11 @@ function setActiveTopTab(tab) {
   }
   if (tab === "found-listings") {
     loadFoundListingsDashboard();
+    return;
+  }
+  if (tab === "arbitrage") {
+    loadArbitrageDeals();
+    startArbitrageRefresh();
     return;
   }
   if (PLATFORM_META[tab]) {
@@ -2926,6 +2938,152 @@ function trackEditorDirtyState(event) {
 
 document.addEventListener("input", trackEditorDirtyState);
 document.addEventListener("change", trackEditorDirtyState);
+
+/* ── Arbitrage Tab ─────────────────────────────────────────────────────────── */
+
+async function loadArbitrageDeals() {
+  try {
+    const res = await fetch("/api/arbitrage/found");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    arbitrageDeals = await res.json();
+    renderArbitrageTab();
+  } catch (err) {
+    console.error("[arbitrage] load failed:", err.message);
+    if (arbitrageDeals.length === 0) {
+      const grid = document.getElementById("arbitrageDealGrid");
+      if (grid) grid.innerHTML = `<div class="sniper-empty">Arbitrage-Daten werden geladen…</div>`;
+    }
+  }
+}
+
+function startArbitrageRefresh() {
+  stopArbitrageRefresh();
+  arbitrageRefreshTimer = setInterval(loadArbitrageDeals, ARBITRAGE_REFRESH_MS);
+}
+
+function stopArbitrageRefresh() {
+  if (arbitrageRefreshTimer) {
+    clearInterval(arbitrageRefreshTimer);
+    arbitrageRefreshTimer = null;
+  }
+}
+
+function renderArbitrageTab() {
+  const deals = arbitrageDeals || [];
+  const filter = document.getElementById("arbitrageVerdictFilter")?.value || "all";
+  const filtered = filter === "all"
+    ? deals
+    : deals.filter((d) => d.arbitrage?.verdict === filter);
+
+  // Update stats
+  const allProfits = deals
+    .map((d) => d.arbitrage?.ebay?.profit || d.arbitrage?.kleinanzeigen?.profit || 0)
+    .filter((p) => p > 0);
+  const strongBuyCount = deals.filter((d) => d.arbitrage?.verdict === "strong_buy").length;
+
+  updateEl("arbStatDeals", String(deals.length));
+  updateEl("arbStatStrongBuy", String(strongBuyCount));
+  updateEl("arbStatBestProfit", allProfits.length ? `€${Math.max(...allProfits).toFixed(0)}` : "–");
+  updateEl("arbStatBestRoi", (() => {
+    const best = deals
+      .map((d) => d.arbitrage?.ebay?.roi || d.arbitrage?.kleinanzeigen?.roi || 0)
+      .sort((a, b) => b - a)[0];
+    return best ? `${best.toFixed(0)}%` : "–";
+  })());
+
+  // Live pill
+  const pill = document.getElementById("arbitrageLivePill");
+  if (pill) pill.textContent = `${deals.length} Deals`;
+
+  // Render cards
+  const grid = document.getElementById("arbitrageDealGrid");
+  if (!grid) return;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = deals.length === 0
+      ? `<div class="sniper-empty">Noch keine Arbitrage-Funde. Starte den Arbitrage-Sniper (<code>npm run arb</code>) und warte auf den ersten Deal.</div>`
+      : `<div class="sniper-empty">Keine Deals mit Verdict <strong>${filter}</strong>.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map((deal) => buildArbitrageCard(deal)).join("");
+}
+
+function buildArbitrageCard(deal) {
+  const arb = deal.arbitrage || {};
+  const verdict = arb.verdict || "no_data";
+  const verdictColors = {
+    strong_buy: "var(--grade-a-bg, #1a3a1a)",
+    buy: "var(--grade-b-bg, #1a3520)",
+    buy_ka: "var(--grade-b-bg, #1a3520)",
+    maybe: "var(--grade-c-bg, #2a2a1a)",
+    skip: "var(--grade-f-bg, #2a1a1a)",
+    no_data: "var(--card-bg, #1a1a2e)",
+  };
+  const verdictLabels = {
+    strong_buy: "🔥 Strong Buy",
+    buy: "✅ Buy",
+    buy_ka: "✅ Buy (KA)",
+    maybe: "🤔 Maybe",
+    skip: "❌ Skip",
+    no_data: "📊 No Data",
+  };
+
+  const ebayProfit = arb.ebay?.profit;
+  const kaProfit = arb.kleinanzeigen?.profit;
+  const bestProfit = arb.recommendation?.profit || ebayProfit || kaProfit || 0;
+  const bestPlatform = arb.recommendation?.platform || "—";
+
+  const ebayMedian = deal.ebay_data?.medianPrice;
+  const kaMedian = deal.kleinanzeigen_data?.medianPrice;
+
+  const profitColor = bestProfit > 50 ? "#3fb950" : bestProfit > 10 ? "#d4a72c" : "#f85149";
+
+  return `
+    <div class="card arbitrage-card" style="border-left: 3px solid ${profitColor}; background: ${verdictColors[verdict] || verdictColors.no_data}">
+      <div class="card-header">
+        <span class="badge badge-platform-arbitrage">${verdictLabels[verdict] || verdict}</span>
+        <span class="card-profit" style="color:${profitColor}">€${bestProfit.toFixed(2)}</span>
+      </div>
+      <h3 class="card-title">
+        <a href="${escHtml(deal.url || '#')}" target="_blank" rel="noopener">${escHtml(deal.title || 'Unbekannt')}</a>
+      </h3>
+      <div class="card-meta">
+        <div class="arbitrage-price-row">
+          <div class="arb-price-col">
+            <span class="arb-label">🛒 Vinted</span>
+            <span class="arb-value">€${(deal.vinted_price || 0).toFixed(2)}</span>
+            <span class="arb-sub">Total: €${(arb.buy?.total || 0).toFixed(2)}</span>
+          </div>
+          <div class="arb-arrow">→</div>
+          <div class="arb-price-col">
+            <span class="arb-label">💰 ${bestPlatform}</span>
+            <span class="arb-value">€${(arb.ebay?.sellPrice || arb.kleinanzeigen?.sellPrice || 0).toFixed(2)}</span>
+            <span class="arb-sub">Net: €${(arb.ebay?.netProceeds || arb.kleinanzeigen?.netProceeds || 0).toFixed(2)}</span>
+          </div>
+        </div>
+        ${ebayMedian || kaMedian ? `
+        <div class="arbitrage-market-row">
+          ${ebayMedian ? `<span class="arb-market-tag">eBay Ø €${ebayMedian.toFixed(0)}</span>` : ''}
+          ${kaMedian ? `<span class="arb-market-tag">KA Ø €${kaMedian.toFixed(0)}</span>` : ''}
+          ${arb.ebay?.roi ? `<span class="arb-market-tag roi">ROI ${arb.ebay.roi.toFixed(0)}%</span>` : ''}
+        </div>` : ''}
+        <div class="arbitrage-time">${formatTimestamp(deal.timestamp)} · ${escHtml(deal.query || '')}</div>
+      </div>
+    </div>`;
+}
+
+function updateEl(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+// Cleanup arbitrage refresh when leaving tab
+const _origSetActiveTopTab = setActiveTopTab;
+setActiveTopTab = function(tab) {
+  if (tab !== "arbitrage") stopArbitrageRefresh();
+  return _origSetActiveTopTab(tab);
+};
 
 /* ── Boot ───────────────────────────────────────────────────────────────────── */
 connectWS();

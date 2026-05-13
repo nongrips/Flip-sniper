@@ -22,6 +22,7 @@ const SHARED_FOUND_FILES = {
   wallapop: path.join(DATA_DIR, "wallapop", "found.ndjson"),
   vinted: path.join(DATA_DIR, "vinted", "found.ndjson"),
   mercari: path.join(DATA_DIR, "mercari", "found.ndjson"),
+  arbitrage: path.join(DATA_DIR, "arbitrage", "found.ndjson"),
 };
 const REJECTED_HEADERS = "timestamp,title,query,target_id,target_label,target_group,listing_price,reason,url,make,model,year,title_status\n";
 
@@ -71,6 +72,13 @@ const PROCESSES = {
     label: "Mercari Sniper",
     cmd: process.execPath,
     args: ["lib/mercari-sniper.js"],
+    proc: null,
+    stopping: false,
+  },
+  "arbitrage-sniper": {
+    label: "Flip Arbitrage",
+    cmd: process.execPath,
+    args: ["lib/arbitrage-sniper.js"],
     proc: null,
     stopping: false,
   },
@@ -485,6 +493,7 @@ function startWatchers() {
   watchDataFile(SHARED_FOUND_FILES.wallapop, "shared-found-updated", { platform: "wallapop" });
   watchDataFile(SHARED_FOUND_FILES.vinted, "shared-found-updated", { platform: "vinted" });
   watchDataFile(SHARED_FOUND_FILES.mercari, "shared-found-updated", { platform: "mercari" });
+  watchDataFile(SHARED_FOUND_FILES.arbitrage, "shared-found-updated", { platform: "arbitrage" });
 }
 
 app.get("/api/status", (_req, res) => {
@@ -853,6 +862,12 @@ app.post("/api/shared/watchlist/rename-group", (req, res) => {
   const saved = ws.saveWorkspaceWatchlist(updated);
   broadcast({ type: "shared-watchlist-updated", ts: Date.now() });
   res.json({ ok: true, changed, groups: ws.buildWatchlistGroups(saved) });
+});
+
+// ── Arbitrage API ─────────────────────────────────────────────────────────
+app.get("/api/arbitrage/found", (_req, res) => {
+  const entries = readNdjsonTail(SHARED_FOUND_FILES.arbitrage, 100);
+  res.json(entries);
 });
 
 wss.on("connection", (ws) => {

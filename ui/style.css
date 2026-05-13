@@ -2115,3 +2115,82 @@ h2 {
 .grade-chip-c.active { background: rgba(246,201,78,.18); border-color: rgba(246,201,78,.5);  color: #f6c94e; }
 .grade-chip-d.active { background: rgba(240,82,82,.14);  border-color: rgba(240,82,82,.45);  color: #ff8d8d; }
 .grade-chip-f.active { background: rgba(240,82,82,.18);  border-color: rgba(240,82,82,.55);  color: #ff8d8d; }
+
+/* ── Arbitrage Tab ─────────────────────────────────────────────────────────── */
+
+.arbitrage-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .5rem;
+}
+.arbitrage-card .card-profit {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.arbitrage-price-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin: .75rem 0;
+  padding: .75rem;
+  background: rgba(255,255,255,.03);
+  border-radius: 8px;
+}
+.arb-price-col {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  flex: 1;
+}
+.arb-label {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+.arb-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.arb-sub {
+  font-size: .75rem;
+  color: var(--muted);
+}
+.arb-arrow {
+  font-size: 1.25rem;
+  color: var(--muted);
+}
+.arbitrage-market-row {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin: .5rem 0;
+}
+.arb-market-tag {
+  font-size: .7rem;
+  padding: .15rem .5rem;
+  border-radius: 4px;
+  background: rgba(59,130,246,.15);
+  color: #93bbfd;
+  white-space: nowrap;
+}
+.arb-market-tag.roi {
+  background: rgba(63,185,80,.15);
+  color: #6fe5a3;
+}
+.arbitrage-time {
+  font-size: .65rem;
+  color: var(--muted);
+  margin-top: .25rem;
+}
+.badge-platform-arbitrage {
+  background: rgba(63,185,80,.18);
+  color: #6fe5a3;
+  font-size: .65rem;
+  padding: .15rem .55rem;
+  border-radius: 4px;
+  font-weight: 600;
+}

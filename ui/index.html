@@ -3,19 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FBM Sniper Community Edition</title>
+  <title>Flip-Sniper — Vinted → eBay Arbitrage</title>
   <link rel="icon" href="data:," />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <div class="brand">FBM Sniper <span class="edition-pill">Community</span></div>
+    <div class="brand">Flip-Sniper <span class="edition-pill">Arbitrage</span></div>
     <nav>
       <button class="nav-btn active" data-tab="cars">Cars</button>
       <button class="nav-btn" data-tab="facebook">Facebook</button>
       <button class="nav-btn" data-tab="wallapop">Wallapop</button>
       <button class="nav-btn" data-tab="vinted">Vinted</button>
       <button class="nav-btn" data-tab="mercari">Mercari</button>
+      <button class="nav-btn" data-tab="arbitrage" style="color:#3fb950">🔄 Flip</button>
       <button class="nav-btn" data-tab="found-listings">Found Listings</button>
       <button class="nav-btn" data-tab="watchlist">Watchlist</button>
       <button class="nav-btn" data-tab="settings">Settings</button>
@@ -248,6 +249,49 @@
     <section class="tab" id="tab-wallapop"><div id="wallapopPanel"></div></section>
     <section class="tab" id="tab-vinted"><div id="vintedPanel"></div></section>
     <section class="tab" id="tab-mercari"><div id="mercariPanel"></div></section>
+    <section class="tab" id="tab-arbitrage">
+      <div class="platform-shell">
+        <section class="hero-panel">
+          <div class="platform-header">
+            <div>
+              <h2>🔄 Flip Arbitrage</h2>
+              <p class="panel-copy">Vinted → eBay / Kleinanzeigen. Finde Deals auf Vinted, der Bot checkt automatisch Resale-Preise und berechnet deinen Profit.</p>
+            </div>
+            <span class="live-pill" id="arbitrageLivePill">Loading…</span>
+          </div>
+          <div class="stats-grid" id="arbitrageStatsGrid">
+            <div class="stat-card">
+              <div class="stat-value" id="arbStatDeals">–</div>
+              <div class="stat-label">Flips gefunden</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="arbStatStrongBuy">–</div>
+              <div class="stat-label">Strong Buy</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="arbStatBestProfit">–</div>
+              <div class="stat-label">Bester Profit</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="arbStatBestRoi">–</div>
+              <div class="stat-label">Beste ROI</div>
+            </div>
+          </div>
+          <div class="toolbar">
+            <select id="arbitrageVerdictFilter" class="filter-select" onchange="renderArbitrageTab()">
+              <option value="all">Alle Deals</option>
+              <option value="strong_buy">Strong Buy</option>
+              <option value="buy">Buy</option>
+              <option value="maybe">Maybe</option>
+              <option value="skip">Skip</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadArbitrageDeals()">↻ Refresh</button>
+            <span class="live-pill">Auto-Refresh 5s</span>
+          </div>
+          <div id="arbitrageDealGrid" class="card-grid"></div>
+        </section>
+      </div>
+    </section>
     <section class="tab" id="tab-found-listings">
       <div class="platform-shell">
         <section class="hero-panel">
